@@ -59,7 +59,7 @@ SQL语句的优化方式主要是通过选择合适的索引、优化查询语�
 
 ## 6、接雨水（数据结构）
 [link](https://leetcode.cn/problems/trapping-rain-water/)
-![Alt text](image-1.png)
+![Alt text](./picture/image-1.png)
 
 ## 7、TCP是如何保证可靠传输的？（计网）
 tcp的序列号可以避免乱序的问题，保证收到的tcp报文都是有序的。
