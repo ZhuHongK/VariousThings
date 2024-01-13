@@ -185,3 +185,122 @@ PX 10000 表示设置 lock_key 的过期时间为 10s，这是为了避免客户
 3. 请求和保持条件：进程当前所拥有的资源在进程请求其他新资源时，由该进程继续占有。
 4. 循环等待条件：存在一种进程资源循环等待链，链中每个进程已获得的资源同时被链中下一个进程所请求。
 ### 死锁演示
+```cpp
+#include <iostream>
+#include <vector>
+#include <list>
+#include <thread>
+#include <mutex>
+
+using namespace std;
+
+class A
+{
+public:
+    // 插入消息，模拟消息不断产生
+    void insertMsg()
+    {
+        for (int i = 0; i < 100; i++)
+        {
+            cout << "插入一条消息:" << i << endl;
+            my_mutex1.lock(); // 语句1
+            my_mutex2.lock(); // 语句2
+            Msg.push_back(i);
+            my_mutex2.unlock();
+            my_mutex1.unlock();
+        }
+    }
+
+    // 读取消息
+    void readMsg()
+    {
+        int MsgCom;
+        for (int i = 0; i < 100; i++)
+        {
+            // MsgCom = MsgLULProc(i);
+            if (MsgLULProc(MsgCom))
+            {
+                // 读出消息了
+                cout << "消息已读出" << endl;
+            }
+            else
+            {
+                // 消息暂时为空
+                cout << "消息为空" << endl;
+            }
+        }
+    }
+
+    // 加解锁代码
+    bool MsgLULProc(int &command)
+    {
+        int curMsg;
+        my_mutex2.lock(); // 语句3
+        my_mutex1.lock(); // 语句4
+        if (!Msg.empty())
+        {
+			// 读取消息，读完删除
+			command = Msg.front();
+			Msg.pop_front();
+
+			my_mutex1.unlock();
+			my_mutex2.unlock();
+			return true;
+        }
+		my_mutex1.unlock();
+		my_mutex2.unlock();
+		return false;
+    }
+
+private:
+    list<int> Msg;   // 消息变量
+    mutex my_mutex1; // 互斥量对象1
+    mutex my_mutex2; // 互斥量对象2
+};
+
+int main()
+{
+	A a;
+	// 创建一个插入消息线程
+	thread insertTd(&A::insertMsg, &a); // 这里要传入引用保证是同一个对象
+	// 创建一个读取消息线程
+	thread readTd(&A::readMsg, &a); // 这里要传入引用保证是同一个对象
+	insertTd.join();
+	readTd.join();
+
+	return 0;
+}
+```
+语句1和语句2表示线程A先锁资源1，再锁资源2，语句3和语句4表示线程B先锁资源2再锁资源1，具备死锁产生的条件。
+### 死锁的解决方案
+保证上锁的顺序一致。
+### 处理方法
+主要有以下四种方法：鸵鸟策略、死锁检测与死锁回复、死锁预防、死锁避免
+#### 鸵鸟策略
+把头埋在沙子里，假装根本没发生问题。
+因为解决死锁问题的代价很高，因此鸵鸟策略这种不采取任务措施的方案会获得更高的性能。
+
+当发生死锁时不会对用户造成多大影响，或发生死锁的概率很低，可以采用鸵鸟策略。
+#### 死锁检测
+不试图阻止死锁，而是当检测到死锁发生时，采取措施进行恢复。
+
+CPU占有率低, 指令:`px -aux | grep 程序名`查看进程状态，会发现一堆锁的请求
+#### 死锁恢复
+- 利用抢占恢复
+- 利用回滚恢复
+- 通过杀死进程恢复
+#### 死锁预防
+1. 破坏互斥条件
+2. 破坏请求和保持条件
+
+	一种实现方式是规定所有进程在开始执行前请求所需要的全部资源
+
+3. 破坏不剥夺条件
+   
+   允许抢占资源
+
+4. 破坏循环请求等待
+
+	给资源统一编号，进程只能按编号顺序来请求资源
+
+#### 
